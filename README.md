@@ -12,6 +12,20 @@
     - [2.1 修改主机名称到IP地址映射配置](#21-%e4%bf%ae%e6%94%b9%e4%b8%bb%e6%9c%ba%e5%90%8d%e7%a7%b0%e5%88%b0ip%e5%9c%b0%e5%9d%80%e6%98%a0%e5%b0%84%e9%85%8d%e7%bd%ae)
     - [2.2 安装 zookeeper](#22-%e5%ae%89%e8%a3%85-zookeeper)
   - [3. Hadoop](#3-hadoop)
+    - [3.1 配置环境变量](#31-%e9%85%8d%e7%bd%ae%e7%8e%af%e5%a2%83%e5%8f%98%e9%87%8f)
+    - [3.2 配置 Hadoop 的各个组件](#32-%e9%85%8d%e7%bd%ae-hadoop-%e7%9a%84%e5%90%84%e4%b8%aa%e7%bb%84%e4%bb%b6)
+      - [3.2.1 hadoop-env.sh](#321-hadoop-envsh)
+      - [3.2.2 core-site.xml](#322-core-sitexml)
+      - [3.2.3 yarn-site.xml](#323-yarn-sitexml)
+      - [3.2.4 hdfs-site.xml](#324-hdfs-sitexml)
+      - [3.2.5 mapred-site.xml](#325-mapred-sitexml)
+    - [3.3 设置节点文件](#33-%e8%ae%be%e7%bd%ae%e8%8a%82%e7%82%b9%e6%96%87%e4%bb%b6)
+    - [3.4 分发 Hadoop](#34-%e5%88%86%e5%8f%91-hadoop)
+    - [3.5 格式化 HDFS](#35-%e6%a0%bc%e5%bc%8f%e5%8c%96-hdfs)
+    - [3.6 开启集群](#36-%e5%bc%80%e5%90%af%e9%9b%86%e7%be%a4)
+    - [3.7 访问集群 Web UI](#37-%e8%ae%bf%e9%97%ae%e9%9b%86%e7%be%a4-web-ui)
+    - [3.8 Hadoop 脚本使用](#38-hadoop-%e8%84%9a%e6%9c%ac%e4%bd%bf%e7%94%a8)
+  - [4. Spark](#4-spark)
 
 
 
@@ -537,3 +551,338 @@ Mode: follower
 ```
 
 ## 3. Hadoop
+
+### 3.1 配置环境变量
+
+首先 在 `master` 上进行操作
+
+**(1) 创建工作目录**
+
+```bash
+mkdir /usr/hadoop
+```
+
+**(2) 解压 Hadoop**
+
+这里我的安装包位于：
+
+```bash
+/usr/pkg/hadoop-2.7.3.tar.gz
+```
+
+执行解压命令
+
+```bash
+tar -zxvf /usr/pkg/hadoop-2.7.3.tar.gz -C /usr/hadoop
+```
+
+**(3) 修改环境变量**
+
+```bash
+vi /etc/profile
+```
+
+增加如下环境变量
+
+```bash
+export HADOOP_HOME=/usr/hadoop/hadoop-2.7.3 export CLASSPATH=$CLASSPATH:$HADOOP_HOME/lib
+export PATH=$PATH:$HADOOP_HOME/bin 
+```
+
+然后生效配置文件
+
+```bash
+source /etc/profile
+```
+
+### 3.2 配置 Hadoop 的各个组件
+
+ `hadoop` 的各个组件的都是使用XML进行配置，这些文件存放在 `hadoop` 的 `etc/hadoop` 目录下。
+
+ | 组件名        | 文件名          |
+ | :------------ | :-------------- |
+ | Common组件    | core-site.xml   |
+ | HDFS组件      | hdfs-site.xml   |
+ | MapReduce组件 | mapred-site.xml |
+ | YARN组件      | yarn-site.xml   |
+
+#### 3.2.1 hadoop-env.sh
+
+修改 java 环境变量
+
+```bash
+export JAVA_HOME=/usr/java/jdk1.8.0_171
+```
+
+#### 3.2.2 core-site.xml
+
+在 `<configuration></configuration>`加入代码：
+
+```xml
+<configuration>
+    <property>
+        <name>fs.default.name</name>
+        <value>hdfs://master:9000</value>
+    </property>
+
+    <property>
+        <name>hadoop.tmp.dir</name>
+        <value>/usr/hadoop/hadoop-2.7.3/hdfs/tmp</value>
+        <description>A base for other temporary directories.</description>
+    </property>
+
+    <property>
+        <name>io.file.buffer.size</name>
+        <value>131072</value>
+    </property>
+
+    <property>
+        <name>fs.checkpoint.period</name>
+        <value>60</value>
+    </property>
+
+    <property>
+        <name>fs.checkpoint.size</name>
+        <value>67108864</value>
+    </property>
+</configuration>
+```
+
+完整代码：[core-site.xml](https://github.com/CatsJuice/big-data-env/blob/master/hadoop/core-site.xml)
+
+#### 3.2.3 yarn-site.xml
+
+```xml
+<configuration>
+    <property>
+        <name>yarn.resourcemanager.adress</name>
+        <value>master:18040</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.scheduler.adress</name>
+        <value>master:18030</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.webapp.adress</name>
+        <value>master:18088</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.resource-tracker.adress</name>
+        <value>master:18025</value>
+    </property>
+
+    <property>
+        <name>yarn.resourcemanager.admin.adress</name>
+        <value>master:18141</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+    </property>
+
+    <property>
+        <name>yarn.nodemanager.auxservices.mapreduce.shuffle.class</name>
+        <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+    </property>
+
+    <!-- Site specific YARN configuration properties -->
+
+</configuration>
+```
+
+完整代码： [yarn-site.xml](https://github.com/CatsJuice/big-data-env/blob/master/hadoop/yarn-site.xml)
+
+#### 3.2.4 hdfs-site.xml
+
+```xml
+<configuration>
+
+    <property>
+        <name>dfs.replication</name>
+        <value>2</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:/usr/hadoop/hadoop-2.7.3/hdfs/name</value>
+        <final>true</final>
+    </property>
+
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:/usr/hadoop/hadoop-2.7.3/hdfs/data</value>
+        <final>true</final>
+    </property>
+
+    <property>
+        <name>dfs.namenode.secondary.http-address</name>
+        <value>master:9001</value>
+    </property>
+
+    <property>
+        <name>dfs.webhdfs.enabled</name>
+        <value>true</value>
+    </property>
+
+    <property>
+        <name>dfs.permissions</name>
+        <value>false</value>
+    </property>
+
+</configuration>
+```
+
+完整代码： [hdfs-site.xml](https://github.com/CatsJuice/big-data-env/blob/master/hadoop/hdfs-site.xml)
+
+#### 3.2.5 mapred-site.xml
+
+`hadoop` 是没有这个文件的，需要将 `mapred-site.xml.template` 复制为 `mapredsite.xml`
+
+```bash
+cp mapred-site.xml.template mapred-site.xml 
+```
+修改如下：
+
+```xml
+<configuration>
+
+<property>
+    <!-- 指定Mapreduce运行在yarn上-->
+    <name>mapreduce.framework.name</name>
+    <value>yarn</value>
+</property> 
+
+</configuration>
+```
+
+### 3.3 设置节点文件
+
+编写 `slaves` 文件,添加子节点 `slave1` 和 `slave2` 
+
+```bash
+vi slaves
+```
+
+设置内容如下：
+
+```bash
+slave1
+slave2
+```
+
+编写 `master` 文件，添加主节点 `master`
+
+```bash
+vi master
+```
+
+设置内容如下：
+
+```bash
+master
+```
+
+### 3.4 分发 Hadoop
+
+```bash
+scp -r /usr/hadoop root@slave1:/usr/ 
+scp -r /usr/hadoop root@slave2:/usr/
+```
+
+### 3.5 格式化 HDFS
+
+```bash
+hadoop namenode -format 
+```
+
+当出现 `Exiting with status 0` 的时候，表明格式化成功。 
+
+### 3.6 开启集群
+
+仅在 `master` 主机上开启操作命令。它会带起从节点的启动;
+在 `Hadoop` 根目录下( `/usr/hadoop/hadoop-2.7.3/` )：
+
+```bash
+sbin/start-all.sh 
+```
+
+查看进程：
+
+```bash
+[root@master hadoop-2.7.3]# jps
+21888 SecondaryNameNode
+21703 NameNode
+22039 ResourceManager
+22298 Jps
+21150 QuorumPeerMain
+[root@master hadoop-2.7.3]# 
+```
+
+子节点上查看：
+
+```bash
+[root@slave2 zookeeper-3.4.10]# jps
+21680 NodeManager
+21179 QuorumPeerMain
+21580 DataNode
+21788 Jps
+[root@slave2 zookeeper-3.4.10]# 
+
+
+[root@slave1 zookeeper-3.4.10]# jps
+2992 DataNode
+3092 NodeManager
+3194 Jps
+2541 QuorumPeerMain
+[root@slave1 zookeeper-3.4.10]# 
+```
+
+### 3.7 访问集群 Web UI
+
+使用 浏览器（同一网段）访问 `master:50070`, 如果无法访问， 首先排查防火墙是否关闭
+
+### 3.8 Hadoop 脚本使用
+
+注： 按以上步骤， 在子节点中未配置 `Hadoop` 的环境变量， 所以在子节点中无法直接使用 `hadoop` 命令， 可以在 `master` 上将 `/etc/profile` 分发到子节点并在子节点上 生效配置文件
+
+```bash
+[root@master hadoop-2.7.3]# scp /etc/profile slave1:/etc/profile
+profile                           100% 2200     2.0MB/s   00:00    
+```
+
+```bash
+[root@slave1 zookeeper-3.4.10]# source /etc/profile
+```
+
+**查看dfs根目录文件**
+
+```bash
+hadoop fs -ls /
+```
+
+**在 hdfs 上创建文件**
+
+```bash
+hadoop fs -mkdir /data
+```
+
+**再次查看根目录**
+
+```bash
+[root@master hadoop-2.7.3]# hadoop fs -ls /
+Found 1 items
+drwxr-xr-x   - root supergroup          0 2019-09-22 22:53 /data
+[root@master hadoop-2.7.3]#
+```
+
+**Web UI 中查看创建的文件**
+
+进入顶部 TAB 栏中的 `Utilities` -> `Browse the file system`
+
+![截图](https://catsjuice.cn/mkdown_imgs/20190922225550.jpg)
+
+## 4. Spark
