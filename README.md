@@ -770,6 +770,8 @@ cp mapred-site.xml.template mapred-site.xml
 </configuration>
 ```
 
+完整代码： [mapred-site.xml](https://github.com/CatsJuice/big-data-env/blob/master/hadoop/mapred-site.xml)
+
 ### 3.3 设置节点文件
 
 编写 `slaves` 文件,添加子节点 `slave1` 和 `slave2` 
