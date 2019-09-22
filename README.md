@@ -1,6 +1,21 @@
 # big-data-env
 大数据环境搭建
 
+  - [1. 基础环境搭建](#1-%e5%9f%ba%e7%a1%80%e7%8e%af%e5%a2%83%e6%90%ad%e5%bb%ba)
+    - [1.1 修改主机名（hostname）](#11-%e4%bf%ae%e6%94%b9%e4%b8%bb%e6%9c%ba%e5%90%8dhostname)
+    - [1.2 配置 hosts 文件](#12-%e9%85%8d%e7%bd%ae-hosts-%e6%96%87%e4%bb%b6)
+    - [1.3 关闭防火墙](#13-%e5%85%b3%e9%97%ad%e9%98%b2%e7%81%ab%e5%a2%99)
+    - [1.4 时间同步](#14-%e6%97%b6%e9%97%b4%e5%90%8c%e6%ad%a5)
+    - [1.5 配置 SSH 免密登录](#15-%e9%85%8d%e7%bd%ae-ssh-%e5%85%8d%e5%af%86%e7%99%bb%e5%bd%95)
+    - [1.6 JDK安装](#16-jdk%e5%ae%89%e8%a3%85)
+  - [2. Zookeeper](#2-zookeeper)
+    - [2.1 修改主机名称到IP地址映射配置](#21-%e4%bf%ae%e6%94%b9%e4%b8%bb%e6%9c%ba%e5%90%8d%e7%a7%b0%e5%88%b0ip%e5%9c%b0%e5%9d%80%e6%98%a0%e5%b0%84%e9%85%8d%e7%bd%ae)
+    - [2.2 安装 zookeeper](#22-%e5%ae%89%e8%a3%85-zookeeper)
+  - [3. Hadoop](#3-hadoop)
+
+
+
+
 以 3 个节点为例， 一个主节点 `master`, 两个从节点 `slave1` 和 `slave2`
 
 ## 1. 基础环境搭建
@@ -520,3 +535,5 @@ Using config: /usr/zookeeper/zookeeper-3.4.10/bin/../conf/zoo.cfg
 Mode: follower
 [root@slave2 zookeeper-3.4.10]# 
 ```
+
+## 3. Hadoop
