@@ -1,6 +1,7 @@
 # big-data-env
 大数据环境搭建
 
+
   - [1. 基础环境搭建](#1-%e5%9f%ba%e7%a1%80%e7%8e%af%e5%a2%83%e6%90%ad%e5%bb%ba)
     - [1.1 修改主机名（hostname）](#11-%e4%bf%ae%e6%94%b9%e4%b8%bb%e6%9c%ba%e5%90%8dhostname)
     - [1.2 配置 hosts 文件](#12-%e9%85%8d%e7%bd%ae-hosts-%e6%96%87%e4%bb%b6)
@@ -25,7 +26,17 @@
     - [3.6 开启集群](#36-%e5%bc%80%e5%90%af%e9%9b%86%e7%be%a4)
     - [3.7 访问集群 Web UI](#37-%e8%ae%bf%e9%97%ae%e9%9b%86%e7%be%a4-web-ui)
     - [3.8 Hadoop 脚本使用](#38-hadoop-%e8%84%9a%e6%9c%ac%e4%bd%bf%e7%94%a8)
-  - [4. Spark](#4-spark)
+  - [4. Spark On YARN](#4-spark-on-yarn)
+    - [4.1 Scala 安装](#41-scala-%e5%ae%89%e8%a3%85)
+    - [4.2 Spark 安装](#42-spark-%e5%ae%89%e8%a3%85)
+      - [4.2.1 安装](#421-%e5%ae%89%e8%a3%85)
+      - [4.2.2 配置spark-env.sh文件](#422-%e9%85%8d%e7%bd%aespark-envsh%e6%96%87%e4%bb%b6)
+      - [4.2.3 配置spark从节点，修改slaves文件](#423-%e9%85%8d%e7%bd%aespark%e4%bb%8e%e8%8a%82%e7%82%b9%e4%bf%ae%e6%94%b9slaves%e6%96%87%e4%bb%b6)
+      - [4.2.4 配置spark环境变量](#424-%e9%85%8d%e7%bd%aespark%e7%8e%af%e5%a2%83%e5%8f%98%e9%87%8f)
+      - [4.2.5 发送配置好的spark安装包到子节点](#425-%e5%8f%91%e9%80%81%e9%85%8d%e7%bd%ae%e5%a5%bd%e7%9a%84spark%e5%ae%89%e8%a3%85%e5%8c%85%e5%88%b0%e5%ad%90%e8%8a%82%e7%82%b9)
+      - [4.2.6 测试 SPARK 环境](#426-%e6%b5%8b%e8%af%95-spark-%e7%8e%af%e5%a2%83)
+      - [4.2.7 访问SparkWeb界面](#427-%e8%ae%bf%e9%97%aesparkweb%e7%95%8c%e9%9d%a2)
+      - [4.2.8 开启spark-shell](#428-%e5%bc%80%e5%90%afspark-shell)
 
 
 
@@ -885,4 +896,265 @@ drwxr-xr-x   - root supergroup          0 2019-09-22 22:53 /data
 
 ![截图](https://catsjuice.cn/mkdown_imgs/20190922225550.jpg)
 
-## 4. Spark
+## 4. Spark On YARN
+
+### 4.1 Scala 安装
+
+我们需要在拥有 `hadoop` 集群的所有节点中安装 `scala` 语言环境，因为 `spark` 的 源代码为 `scala` 语言所编写，所以接下来我们进行安装 `scala`
+
+**解压 scala 的 tar 包**
+
+这里我的安装包位于：
+
+```bash
+/usr/pkg/scala-2.11.12.tgz
+```
+
+创建Scala目录
+
+```bash
+mkdir /usr/scala
+```
+
+进行解压：
+
+```bash
+tar -zxvf /usr/pkg/scala-2.11.12.tgz -C /usr/scala
+```
+
+**配置环境变量**
+
+进入 `scala` 安装目录， 确认 `scala` 的安装路径:
+
+```bash
+[root@master pkg]# cd /usr/scala/scala-2.11.12/
+[root@master scala-2.11.12]# pwd
+/usr/scala/scala-2.11.12
+[root@master scala-2.11.12]# 
+```
+
+编辑 `/etc/profile`
+
+```bash
+vi /etc/profile
+```
+
+增加 环境变量：
+
+```bash
+export SCALA_HOME=/usr/scala/scala-2.11.12
+export PATH=$SCALA_HOME/bin:$PATH
+```
+
+然后生效配置文件：
+
+```bash
+source /etc/profile
+```
+
+查看 `scala` 版本号:
+
+```bash
+scala -version
+```
+
+**分发Scala到子节点**
+
+```bash
+scp -r /usr/scala root@slave1:/usr/
+scp -r /usr/scala root@slave2:/usr/
+```
+
+分发完毕后， 配置子节点的环境变量并生效；
+这里直接分发：
+
+```bash
+scp -r /etc/profile slave1:/etc/profile
+scp -r /etc/profile slave2:/etc/profile
+```
+
+并分别在 子结点上生效配置文件：
+
+```bash
+source /etc/profile
+```
+
+### 4.2 Spark 安装
+
+#### 4.2.1 安装
+
+这里我的安装包位于：
+
+```bash
+/usr/pkg/spark-2.4.0-bin-hadoop2.7.tgz
+```
+
+先创建 `/usr/spark` 目录：
+
+```bash
+mkdir /usr/spark
+```
+
+解压安装包 到 `/usr/spark`
+
+```bash
+tar -zxvf /usr/pkg/spark-2.4.0-bin-hadoop2.7.tgz -C /usr/spark
+```
+
+#### 4.2.2 配置spark-env.sh文件
+
+进入到 `spark` 配置文件目录（`conf`）:
+
+```bash
+[root@master pkg]# cd /usr/spark/spark-2.4.0-bin-hadoop2.7/conf/
+```
+
+将 `spark-env.sh.template` 复制为 `spark-env.sh`:
+
+```bash
+scp spark-env.sh.template spark-env.sh
+```
+
+编辑 `spark-env.sh` 添加内容如下：
+
+```bash
+#!/usr/bin/env bash
+export SPARK_MASTER_IP=master 
+export SCALA_HOME=/usr/scala/scala-2.11.12 
+export SPARK_WORKER_MEMORY=8g 
+export JAVA_HOME=/usr/java/jdk1.8.0_171 
+export HADOOP_HOME=/usr/hadoop/hadoop-2.7.3 
+export HADOOP_CONF_DIR=/usr/hadoop/hadoop-2.7.3/etc/hadoop
+```
+
+#### 4.2.3 配置spark从节点，修改slaves文件
+
+依旧在 `spark` 的配置文件目录（`conf`）,
+
+复制 `slaves.template` 重命名为 `slaves`
+
+```bash
+cp slaves.template slaves
+```
+
+编辑 slaves 文件:
+
+```bash
+vi slaves
+```
+
+在 `slaves` 中添加 `spark` 的工作节点 ：
+
+```bash
+slave1
+slave2
+```
+
+#### 4.2.4 配置spark环境变量 
+
+```bash
+vi /etc/profile
+```
+
+添加内容如下：
+
+```bash
+export SPARK_HOME=/usr/spark/spark-2.4.0-bin-hadoop2.7 
+export PATH=$SPARK_HOME/bin:$PATH 
+```
+
+使环境变量生效
+
+```bash
+source /etc/profile
+```
+
+#### 4.2.5 发送配置好的spark安装包到子节点 
+
+```bash
+scp -r /usr/spark root@slave1:/usr/
+scp -r /usr/spark root@slave2:/usr/
+```
+
+修改子节点的环境变量，同上， 直接分发：
+
+```bash
+scp /etc/profile slave1:/etc/profile
+scp /etc/profile slave2:/etc/profile
+```
+
+并在子节点中运行
+
+```bash
+source /etc/profile
+```
+
+来生效配置
+
+#### 4.2.6 测试 SPARK 环境
+
+首先确保 `hadoop` 环境已开启， 如果未开启，则在 `master` 上使用如下命令开启：
+
+```bash
+/usr/hadoop/hadoop-2.7.3/sbin/start-all.sh
+```
+
+开启 `Spark` 集群
+
+```bash
+/usr/spark/spark-2.4.0-bin-hadoop2.7/sbin/start-all.sh
+```
+
+#### 4.2.7 访问SparkWeb界面 
+
+在浏览器中输入 `master` 节点的 IP 地址， 端口为 `8080`
+
+![screenshot](http://catsjuice.cn/mkdown_imgs/20190922235004.jpg)
+
+
+#### 4.2.8 开启spark-shell
+
+```
+[root@master sbin]# spark-shell
+2019-09-22 23:52:51 WARN  NativeCodeLoader:62 - Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+Spark context Web UI available at http://master:4040
+Spark context available as 'sc' (master = local[*], app id = local-1569167578016).
+Spark session available as 'spark'.
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /___/ .__/\_,_/_/ /_/\_\   version 2.4.0
+      /_/
+         
+Using Scala version 2.11.12 (Java HotSpot(TM) 64-Bit Server VM, Java 1.8.0_171)
+Type in expressions to have them evaluated.
+Type :help for more information.
+
+```
+
+`spark-shell` 默认进入的是 `scala` 环境的 `spark` 交互模式
+
+要进入 `python` 环境下的 `spark` 交互模式， 使用：
+
+```
+[root@master sbin]# pyspark
+Python 2.7.5 (default, Jun 20 2019, 20:27:34) 
+[GCC 4.8.5 20150623 (Red Hat 4.8.5-36)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+2019-09-22 23:55:59 WARN  NativeCodeLoader:62 - Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /__ / .__/\_,_/_/ /_/\_\   version 2.4.0
+      /_/
+
+Using Python version 2.7.5 (default, Jun 20 2019 20:27:34)
+SparkSession available as 'spark'.
+>>> 
+```
